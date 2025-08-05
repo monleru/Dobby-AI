@@ -3,10 +3,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useChatStore } from '../stores/chatStore'
 import FloatingSlang from './FloatingSlang'
-import { CONTRACT_ADDRESS, NETWORK, DEX_SCREENER_URL, TICKER, X_URL } from '../config/constants'
+import { CONTRACT_ADDRESS, NETWORK, DEX_SCREENER_URL, X_URL } from '../config/constants'
 
 const ChatView: React.FC = () => {
-  const { messages, isLoading, sendMessage, clearChat, hasMessages } = useChatStore()
+  const { messages, isLoading, sendMessage, hasMessages } = useChatStore()
   const [inputMessage, setInputMessage] = useState('')
   const [showCopied, setShowCopied] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
