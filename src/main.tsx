@@ -10,7 +10,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        loginMethods: ['wallet','twitter'],
+        loginMethods: ['wallet','twitter','email','google'],
         appearance: {
           theme: 'dark',
           accentColor: '#676FFF',

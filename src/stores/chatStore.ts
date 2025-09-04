@@ -43,6 +43,8 @@ interface ChatStore {
   createNewContext: () => string
   loadContextsFromServer: (accessToken?: string) => Promise<void>
   loadContextFromServer: (contextId: string, accessToken?: string) => Promise<void>
+  shareChatHistory: () => Promise<void>
+  loadSharedChatHistory: (sharedData: any) => void
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -170,6 +172,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const { messageHistory } = get()
     const contextMessages = messageHistory.filter(msg => msg.contextId === contextId)
     
+    console.log('🔄 Setting current context:', contextId, 'Found', contextMessages.length, 'messages in messageHistory')
+    
     set({
       currentContextId: contextId,
       messages: contextMessages
@@ -246,8 +250,104 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           !state.messageHistory.some(existing => existing.uuid === msg.uuid)
         )]
       }))
+      
+      console.log('✅ Context loaded and set. Current messages count:', serverMessages.length)
     } catch (error) {
       console.error('❌ Error loading context from server:', error)
+    }
+  },
+
+  shareChatHistory: async () => {
+    const { messages, currentContextId, selectedModel } = get()
+    
+    if (messages.length === 0) {
+      console.log('⚠️ No messages to share')
+      return
+    }
+
+    try {
+      // Create shareable data
+      const shareData = {
+        contextId: currentContextId,
+        model: selectedModel,
+        messages: messages.map(msg => ({
+          content: msg.content,
+          isUser: msg.isUser,
+          timestamp: msg.timestamp.toISOString()
+        })),
+        sharedAt: new Date().toISOString()
+      }
+
+      // Generate shareable URL (you can customize this based on your needs)
+      const shareUrl = `${window.location.origin}?shared=${encodeURIComponent(JSON.stringify(shareData))}`
+      
+      // Try to use Web Share API if available
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Dobby AI Chat History',
+          text: `Check out this chat with Dobby AI (${selectedModel})`,
+          url: shareUrl
+        })
+        console.log('✅ Chat history shared via Web Share API')
+      } else {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(shareUrl)
+        console.log('✅ Chat history URL copied to clipboard')
+        
+        // Show a temporary notification (you might want to add a toast notification)
+        alert('Chat history URL copied to clipboard!')
+      }
+    } catch (error) {
+      console.error('❌ Error sharing chat history:', error)
+      
+      // Fallback: copy messages as text
+      try {
+        const textContent = messages.map(msg => 
+          `${msg.isUser ? 'You' : 'Dobby AI'}: ${msg.content}`
+        ).join('\n\n')
+        
+        await navigator.clipboard.writeText(textContent)
+        console.log('✅ Chat history copied as text to clipboard')
+        alert('Chat history copied as text to clipboard!')
+      } catch (clipboardError) {
+        console.error('❌ Error copying to clipboard:', clipboardError)
+        alert('Unable to share chat history. Please try again.')
+      }
+    }
+  },
+
+  loadSharedChatHistory: (sharedData: any) => {
+    try {
+      console.log('📥 Loading shared chat history:', sharedData)
+      
+      // Convert shared messages to local format
+      const sharedMessages: ChatMessage[] = sharedData.messages.map((msg: any, index: number) => ({
+        id: `shared_${index}_${Date.now()}`,
+        uuid: uuidv4(),
+        content: msg.content,
+        isUser: msg.isUser,
+        timestamp: new Date(msg.timestamp),
+        isLoading: false,
+        userId: undefined, // Shared messages don't have user ID
+        contextId: sharedData.contextId || 'shared',
+        parentMessageId: undefined
+      }))
+      
+      // Set the model if provided
+      if (sharedData.model) {
+        set({ selectedModel: sharedData.model })
+      }
+      
+      // Set the messages
+      set({
+        currentContextId: sharedData.contextId || 'shared',
+        messages: sharedMessages,
+        messageHistory: [...get().messageHistory, ...sharedMessages]
+      })
+      
+      console.log('✅ Shared chat history loaded:', sharedMessages.length, 'messages')
+    } catch (error) {
+      console.error('❌ Error loading shared chat history:', error)
     }
   },
 

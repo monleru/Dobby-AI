@@ -7,11 +7,12 @@ import FloatingSlang from './FloatingSlang'
 import LoginButton from './LoginButton'
 import ModelSelector from './ModelSelector'
 import ContextNavigator from './ContextNavigator'
+import LoadingScreen from './LoadingScreen'
 import { X_URL, TELEGRAM_URL } from '../config/constants'
 
 const ChatView: React.FC = () => {
-  const { authenticated, user, login, getAccessToken } = usePrivy()
-  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer } = useChatStore()
+  const { authenticated, user, login, getAccessToken, ready } = usePrivy()
+  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer, shareChatHistory, loadSharedChatHistory } = useChatStore()
   const [inputMessage, setInputMessage] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -49,6 +50,7 @@ const ChatView: React.FC = () => {
   }
 
   useEffect(() => {
+    console.log('📱 ChatView: Messages changed, count:', messages.length)
     scrollToBottom()
   }, [messages])
 
@@ -68,6 +70,32 @@ const ChatView: React.FC = () => {
       loadContexts()
     }
   }, [authenticated, user, setUserId, getAccessToken, loadContextsFromServer])
+
+  // Check for shared chat history in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const sharedParam = urlParams.get('shared')
+    
+    if (sharedParam) {
+      try {
+        const sharedData = JSON.parse(decodeURIComponent(sharedParam))
+        console.log('🔗 Found shared chat history in URL:', sharedData)
+        loadSharedChatHistory(sharedData)
+        
+        // Clean up URL
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('shared')
+        window.history.replaceState({}, '', newUrl.toString())
+      } catch (error) {
+        console.error('❌ Error parsing shared chat history:', error)
+      }
+    }
+  }, [loadSharedChatHistory])
+
+  // Show loading screen while Privy is initializing
+  if (!ready) {
+    return <LoadingScreen />
+  }
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 flex flex-col relative overflow-hidden">
@@ -180,7 +208,27 @@ const ChatView: React.FC = () => {
               </div>
               
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 chat-messages-container">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 chat-messages-container relative">
+                {/* Share Button - Show when there are messages */}
+                {(() => {
+                  console.log('🔍 Debug Share Button - hasMessages:', hasMessages, 'messages.length:', messages.length, 'messages:', messages)
+                  // Use messages.length directly instead of hasMessages
+                  return messages.length > 0
+                })() && (
+                  <div className="sticky top-0 z-10 flex justify-end mb-4 pb-2 bg-gradient-to-b from-gray-800/90 to-transparent">
+                    <button
+                      onClick={shareChatHistory}
+                      className="flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
+                      title="Share this chat conversation with others"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                      </svg>
+                      <span className="text-sm font-medium">Share Chat</span>
+                    </button>
+                  </div>
+                )}
+                
                 {/* Welcome Message */}
                 {!hasMessages && (
                   <div className="text-center py-8">
@@ -298,6 +346,7 @@ const ChatView: React.FC = () => {
           )}
         </div>
       </div>
+      
     </div>
   )
 }

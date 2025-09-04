@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { usePrivy } from '@privy-io/react-auth'
 import { useChatStore } from '../stores/chatStore'
 
 interface ChatHistoryInfo {
@@ -9,6 +10,7 @@ interface ChatHistoryInfo {
 }
 
 const ContextNavigator: React.FC = () => {
+  const { getAccessToken } = usePrivy()
   const { 
     messageHistory, 
     currentContextId, 
@@ -67,8 +69,13 @@ const ContextNavigator: React.FC = () => {
     const serverContext = serverContexts.find(ctx => ctx.context === historyId)
     
     if (serverContext) {
-      // Load from server
-      await loadContextFromServer(historyId)
+      // Load from server with access token
+      const accessToken = await getAccessToken()
+      if (accessToken) {
+        await loadContextFromServer(historyId, accessToken)
+      } else {
+        console.error('❌ No access token available for loading context')
+      }
     } else {
       // Use local context
       setCurrentContext(historyId)
