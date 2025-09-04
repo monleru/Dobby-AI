@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { AIModelKey, AI_MODELS } from '../config/constants'
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001'
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://api.uselessai.fun/'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
