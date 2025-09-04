@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { usePrivy } from '@privy-io/react-auth'
 import { useChatStore } from '../stores/chatStore'
 import FloatingSlang from './FloatingSlang'
+import LoginButton from './LoginButton'
+import ModelSelector from './ModelSelector'
+import ContextNavigator from './ContextNavigator'
 import { X_URL, TELEGRAM_URL } from '../config/constants'
 
 const ChatView: React.FC = () => {
-  const { messages, isLoading, sendMessage, hasMessages } = useChatStore()
+  const { authenticated, user, login, getAccessToken } = usePrivy()
+  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer } = useChatStore()
   const [inputMessage, setInputMessage] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -23,10 +28,18 @@ const ChatView: React.FC = () => {
     e.preventDefault()
     if (!inputMessage.trim() || isLoading) return
     
+    if (!authenticated) {
+      alert('Please login to chat with Dobby!')
+      return
+    }
+    
     const message = inputMessage
     setInputMessage('')
     
-    await sendMessage(message)
+    // Get Privy access token for authentication
+    const accessToken = await getAccessToken()
+    
+    await sendMessage(message, user?.id, undefined, accessToken || undefined)
   }
 
   const scrollToBottom = () => {
@@ -38,6 +51,23 @@ const ChatView: React.FC = () => {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    if (authenticated && user) {
+      const userId = user.id
+      setUserId(userId)
+      
+      // Load contexts from server when user is authenticated
+      const loadContexts = async () => {
+        const accessToken = await getAccessToken()
+        if (accessToken) {
+          await loadContextsFromServer(accessToken)
+        }
+      }
+      
+      loadContexts()
+    }
+  }, [authenticated, user, setUserId, getAccessToken, loadContextsFromServer])
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 flex flex-col relative overflow-hidden">
@@ -65,66 +95,123 @@ const ChatView: React.FC = () => {
                 </div>
               </div>
               
-              {/* Social Buttons */}
+              {/* Right side buttons */}
               <div className="flex items-center space-x-3">
-                <button 
-                  onClick={() => window.open(TELEGRAM_URL, '_blank')}
-                  className="text-xs bg-blue-500 hover:bg-blue-600 hover:scale-105 transition text-white px-3 py-2 rounded transition-colors font-medium flex items-center space-x-2"
-                  title="Chat with Dobby on Telegram"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                  </svg>
-                  <span>Telegram</span>
-                </button>
-                <button 
-                  onClick={() => window.open(X_URL, '_blank')}
-                  className="text-xs bg-black hover:scale-105 transition text-white px-3 py-2 rounded transition-colors font-medium flex items-center space-x-2"
-                  title="Follow @monleru on X"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                  <span>Follow @monleru</span>
-                </button>
+                {/* Social Buttons */}
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => window.open(TELEGRAM_URL, '_blank')}
+                    className="text-xs bg-blue-500 hover:bg-blue-600 hover:scale-105 transition text-white px-3 py-2 rounded transition-colors font-medium flex items-center space-x-2"
+                    title="Chat with Dobby on Telegram"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                    </svg>
+                    <span>Telegram</span>
+                  </button>
+                  <button 
+                    onClick={() => window.open(X_URL, '_blank')}
+                    className="text-xs bg-black hover:scale-105 transition text-white px-3 py-2 rounded transition-colors font-medium flex items-center space-x-2"
+                    title="Follow @monleru on X"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>Follow @monleru</span>
+                  </button>
+                </div>
+                
+                {/* Login Button */}
+                <LoginButton />
               </div>
             </div>
           </div>
         </header>
 
-        {/* Chat Container */}
+        {/* Chat Container or Login Prompt */}
         <div className="max-w-4xl mx-auto px-4 flex-1 py-2 flex flex-col min-h-0">
-          <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-600 overflow-hidden flex-1 flex flex-col glow-animation min-h-0">
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 chat-messages-container">
-              {/* Welcome Message */}
-              {!hasMessages && (
-                <div className="text-center py-8">
-                                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
-                  <img src="/logo.jpeg" alt="Dobby AI Logo" className="w-full h-full object-cover" />
-                </div>
-                  <h2 className="text-xl font-semibold text-white mb-2">
-                    Hello! I'm Dobby AI
+          {!authenticated ? (
+            /* Login Prompt */
+            <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-600 overflow-hidden flex-1 flex flex-col glow-animation min-h-0">
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center py-8 max-w-md mx-auto p-4">
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 overflow-hidden">
+                    <img src="/logo.jpeg" alt="Dobby AI Logo" className="w-full h-full object-cover" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-4">
+                    Welcome to Dobby AI
                   </h2>
-                  <p className="text-gray-300 mb-6 max-w-md mx-auto">
-                    I'm Dobby AI and you can talk to me!
+                  <p className="text-gray-300 mb-8 text-lg">
+                    Please login to start chatting with Dobby AI
                   </p>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-400">Try asking:</p>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {suggestions.map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          onClick={() => sendMessage(suggestion)}
-                          className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-full transition-colors"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-400">Choose your preferred login method:</p>
+                    <div className="flex flex-col space-y-3">
+                      <button
+                        onClick={login}
+                        className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 hover:scale-105"
+                      >
+                        Login
+                      </button>
+                      <p className="text-xs text-gray-500">
+                        Login with Privy
+                      </p>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+          ) : (
+            /* Chat Interface */
+            <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-600 overflow-hidden flex-1 flex flex-col glow-animation min-h-0">
+              {/* Model Selector and Chat History Navigator */}
+              <div className="flex items-center justify-between p-3 border-b border-gray-700 bg-gray-800/50">
+                <div className="flex items-center space-x-3">
+                  <ContextNavigator />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-400">AI Model:</span>
+                  <ModelSelector 
+                    selectedModel={selectedModel}
+                    onModelChange={setSelectedModel}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+              
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 chat-messages-container">
+                {/* Welcome Message */}
+                {!hasMessages && (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                      <img src="/logo.jpeg" alt="Dobby AI Logo" className="w-full h-full object-cover" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-white mb-2">
+                      Hello! I'm Dobby AI
+                    </h2>
+                    <p className="text-gray-300 mb-6 max-w-md mx-auto">
+                      I'm Dobby AI and you can talk to me!
+                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-400">Try asking:</p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {suggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            onClick={async () => {
+                              const accessToken = await getAccessToken()
+                              sendMessage(suggestion, user?.id, undefined, accessToken || undefined)
+                            }}
+                            className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-full transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               {/* Messages */}
               {messages.map((message) => (
@@ -184,7 +271,7 @@ const ChatView: React.FC = () => {
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="2 + 2 = 5"
+                  placeholder="Ask me anything"
                   className="flex-1 px-4 py-3 border border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-700 text-white placeholder-gray-400"
                   disabled={isLoading}
                 />
@@ -208,6 +295,7 @@ const ChatView: React.FC = () => {
               </form>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
