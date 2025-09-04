@@ -137,8 +137,10 @@ src/
 ├── components/
 │   ├── LoadingScreen.tsx    # New loading component
 │   └── ChatView.tsx         # Updated with loading logic
-└── assets/
-    └── sentient.png         # Logo image
+├── assets/
+│   └── sentient.png         # Logo image (source)
+└── public/
+    └── sentient.png         # Logo image (served statically)
 ```
 
 #### Dependencies
