@@ -1,5 +1,4 @@
 import React from 'react'
-import sentientLogo from '../assets/sentient.png'
 
 const LoadingScreen: React.FC = () => {
   return (
@@ -8,7 +7,7 @@ const LoadingScreen: React.FC = () => {
         {/* Logo with animation */}
         <div className="mb-8">
           <img 
-            src={sentientLogo} 
+            src="/sentient.png" 
             alt="Sentient Logo" 
             className="w-24 h-24 mx-auto animate-pulse"
           />
