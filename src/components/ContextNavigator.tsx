@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useChatStore } from '../stores/chatStore'
+import SharedContextManager from './SharedContextManager'
 
 interface ChatHistoryInfo {
   historyId: string
@@ -23,6 +24,7 @@ const ContextNavigator: React.FC = () => {
   } = useChatStore()
   
   const [isOpen, setIsOpen] = useState(false)
+  const [showSharedManager, setShowSharedManager] = useState(false)
 
   // Get unique chat histories from server contexts and local message history
   const getChatHistories = (): ChatHistoryInfo[] => {
@@ -126,6 +128,17 @@ const ContextNavigator: React.FC = () => {
               <span className="text-sm font-medium">New Chat</span>
             </button>
 
+            {/* Shared Contexts Button */}
+            <button
+              onClick={() => setShowSharedManager(true)}
+              className="w-full flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-colors mb-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+              <span className="text-sm font-medium">Shared Chats</span>
+            </button>
+
             {/* Chat History List */}
             {chatHistories.length > 0 && (
               <div className="border-t border-gray-600 pt-2">
@@ -170,6 +183,26 @@ const ContextNavigator: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">Start a new chat to see it here</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Shared Context Manager Modal */}
+      {showSharedManager && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto shadow-2xl border border-gray-600">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Shared Contexts</h2>
+              <button
+                onClick={() => setShowSharedManager(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <SharedContextManager />
           </div>
         </div>
       )}

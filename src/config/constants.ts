@@ -1,4 +1,4 @@
-export const API_URL = 'https://api.uselessai.fun/'//(import.meta as any).env?.VITE_API_URL
+export const API_URL = (import.meta as any).env?.VITE_API_URL
 export const X_URL = 'https://x.com/monleru';
 export const TELEGRAM_URL = 'https://t.me/askDobbybot';
 export const PRIVY_APP_ID = (import.meta as any).env?.VITE_PRIVY_APP_ID || 'cmf5b6yvy004wk00cmj07a826';

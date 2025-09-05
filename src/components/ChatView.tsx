@@ -8,12 +8,14 @@ import LoginButton from './LoginButton'
 import ModelSelector from './ModelSelector'
 import ContextNavigator from './ContextNavigator'
 import LoadingScreen from './LoadingScreen'
+import ShareModal from './ShareModal'
 import { X_URL, TELEGRAM_URL } from '../config/constants'
 
 const ChatView: React.FC = () => {
   const { authenticated, user, login, getAccessToken, ready } = usePrivy()
-  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer, shareChatHistory, loadSharedChatHistory } = useChatStore()
+  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer, currentContextId } = useChatStore()
   const [inputMessage, setInputMessage] = useState('')
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -49,6 +51,26 @@ const ChatView: React.FC = () => {
     }, 100)
   }
 
+  const handleShareClick = async () => {
+    if (!currentContextId) {
+      alert('No context to share. Please start a conversation first.')
+      return
+    }
+    setIsShareModalOpen(true)
+  }
+
+  const handleShareSuccess = async (shareUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      // Open shared chat in new window
+      window.open(shareUrl, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+      // Still open the window even if clipboard fails
+      window.open(shareUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
   useEffect(() => {
     console.log('📱 ChatView: Messages changed, count:', messages.length)
     scrollToBottom()
@@ -72,25 +94,6 @@ const ChatView: React.FC = () => {
   }, [authenticated, user, setUserId, getAccessToken, loadContextsFromServer])
 
   // Check for shared chat history in URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const sharedParam = urlParams.get('shared')
-    
-    if (sharedParam) {
-      try {
-        const sharedData = JSON.parse(decodeURIComponent(sharedParam))
-        console.log('🔗 Found shared chat history in URL:', sharedData)
-        loadSharedChatHistory(sharedData)
-        
-        // Clean up URL
-        const newUrl = new URL(window.location.href)
-        newUrl.searchParams.delete('shared')
-        window.history.replaceState({}, '', newUrl.toString())
-      } catch (error) {
-        console.error('❌ Error parsing shared chat history:', error)
-      }
-    }
-  }, [loadSharedChatHistory])
 
   // Show loading screen while Privy is initializing
   if (!ready) {
@@ -217,7 +220,7 @@ const ChatView: React.FC = () => {
                 })() && (
                   <div className="sticky top-0 z-10 flex justify-end mb-4 pb-2 bg-gradient-to-b from-gray-800/90 to-transparent">
                     <button
-                      onClick={shareChatHistory}
+                      onClick={handleShareClick}
                       className="flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
                       title="Share this chat conversation with others"
                     >
@@ -347,6 +350,17 @@ const ChatView: React.FC = () => {
         </div>
       </div>
       
+      {/* Share Modal */}
+      {isShareModalOpen && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          contextId={currentContextId || ''}
+          onShareSuccess={handleShareSuccess}
+          accessToken={async () => await getAccessToken()}
+          messages={messages}
+        />
+      )}
     </div>
   )
 }
