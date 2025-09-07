@@ -72,7 +72,7 @@ const SharedContextManager: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-600 p-6">
+      <div className="bg-gray-700 rounded-2xl shadow-2xl border border-gray-600 p-6">
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           <span className="ml-3 text-white">Loading shared contexts...</span>
@@ -82,7 +82,7 @@ const SharedContextManager: React.FC = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-600 p-6">
+    <div className="bg-gray-700 rounded-2xl shadow-2xl border border-gray-600 p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-white">My Shared Contexts</h2>
         <button

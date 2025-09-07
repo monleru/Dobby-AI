@@ -88,14 +88,14 @@ const SharedChatView: React.FC<SharedChatViewProps> = ({ shareId }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900">
+    <div className="min-h-screen bg-gray-800">
       {/* Header */}
-      <header className="bg-gray-800 shadow-lg border-b border-gray-700">
+      <header className="bg-gray-700 shadow-lg border-b border-gray-600">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full overflow-hidden">
-                <img src="/logo.jpeg" alt="Dobby AI Logo" className="w-full h-full object-cover" />
+                <img src="/logo.png" alt="Dobby AI Logo" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">Dobby AI</h1>
@@ -104,7 +104,7 @@ const SharedChatView: React.FC<SharedChatViewProps> = ({ shareId }) => {
             </div>
             <button
               onClick={() => window.location.href = '/'}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
             >
               Try Dobby AI
             </button>
@@ -146,7 +146,7 @@ const SharedChatView: React.FC<SharedChatViewProps> = ({ shareId }) => {
         </div>
 
         {/* Messages */}
-        <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border border-gray-600 overflow-hidden">
+        <div className="bg-gray-700 rounded-2xl shadow-2xl border border-gray-600 overflow-hidden">
           <div className="p-6 space-y-6">
             {sharedData.messages.map((message, index) => (
               <div
@@ -157,7 +157,7 @@ const SharedChatView: React.FC<SharedChatViewProps> = ({ shareId }) => {
                   className={`max-w-3xl px-4 py-3 rounded-2xl ${
                     message.role === 'user'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-100'
+                      : 'bg-gray-600 text-gray-100'
                   }`}
                 >
                   <div className="prose prose-invert max-w-none">

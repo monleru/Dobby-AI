@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useChatStore } from '../stores/chatStore'
+import { useTheme } from '../contexts/ThemeContext'
 import SharedContextManager from './SharedContextManager'
 
 interface ChatHistoryInfo {
@@ -22,6 +23,7 @@ const ContextNavigator: React.FC = () => {
     contextsLoading,
     loadContextFromServer
   } = useChatStore()
+  const { themeColors } = useTheme()
   
   const [isOpen, setIsOpen] = useState(false)
   const [showSharedManager, setShowSharedManager] = useState(false)
@@ -95,13 +97,13 @@ const ContextNavigator: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+        className={`flex items-center space-x-2 px-3 py-2 ${themeColors.buttonSecondary} rounded-lg transition-colors`}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
         </svg>
-        <span className="text-sm">Chat History</span>
-        <span className="text-xs bg-gray-600 px-2 py-1 rounded-full">
+        <span className={`text-sm ${themeColors.text}`}>Chat History</span>
+        <span className={`text-xs ${themeColors.backgroundTertiary} px-2 py-1 rounded-full`}>
           {contextsLoading ? '...' : chatHistories.length}
         </span>
         <svg
@@ -115,7 +117,7 @@ const ContextNavigator: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50">
+        <div className={`absolute top-full left-0 mt-1 w-80 ${themeColors.dropdown} border ${themeColors.border} rounded-lg shadow-xl z-50`}>
           <div className="p-2">
             {/* New Chat Button */}
             <button
@@ -141,8 +143,8 @@ const ContextNavigator: React.FC = () => {
 
             {/* Chat History List */}
             {chatHistories.length > 0 && (
-              <div className="border-t border-gray-600 pt-2">
-                <p className="text-xs text-gray-400 px-2 py-1 mb-2">Recent Chats</p>
+              <div className={`border-t ${themeColors.border} pt-2`}>
+                <p className={`text-xs ${themeColors.textTertiary} px-2 py-1 mb-2`}>Recent Chats</p>
                 <div className="space-y-1 max-h-60 overflow-y-auto">
                   {chatHistories.map((chatHistory) => (
                     <button
@@ -150,8 +152,8 @@ const ContextNavigator: React.FC = () => {
                       onClick={() => handleHistorySelect(chatHistory.historyId)}
                       className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
                         chatHistory.historyId === currentContextId
-                          ? 'bg-purple-600 text-white'
-                          : 'hover:bg-gray-700 text-gray-200'
+                          ? themeColors.dropdownItemSelected
+                          : themeColors.dropdownItem
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -159,7 +161,7 @@ const ContextNavigator: React.FC = () => {
                           <p className="text-sm font-medium truncate">
                             {chatHistory.title}
                           </p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-400">
+                          <div className={`flex items-center space-x-2 text-xs ${themeColors.textTertiary}`}>
                             <span>{chatHistory.messageCount} messages</span>
                             <span>•</span>
                             <span>
@@ -179,8 +181,8 @@ const ContextNavigator: React.FC = () => {
 
             {chatHistories.length === 0 && (
               <div className="text-center py-4">
-                <p className="text-sm text-gray-400">No chat history yet</p>
-                <p className="text-xs text-gray-500 mt-1">Start a new chat to see it here</p>
+                <p className={`text-sm ${themeColors.textTertiary}`}>No chat history yet</p>
+                <p className={`text-xs ${themeColors.textTertiary} mt-1`}>Start a new chat to see it here</p>
               </div>
             )}
           </div>
@@ -190,12 +192,12 @@ const ContextNavigator: React.FC = () => {
       {/* Shared Context Manager Modal */}
       {showSharedManager && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto shadow-2xl border border-gray-600">
+          <div className={`${themeColors.backgroundSecondary} rounded-2xl p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto shadow-2xl border ${themeColors.border}`}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Shared Contexts</h2>
+              <h2 className={`text-xl font-bold ${themeColors.text}`}>Shared Contexts</h2>
               <button
                 onClick={() => setShowSharedManager(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className={`${themeColors.textTertiary} hover:${themeColors.text} transition-colors`}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -8,7 +8,17 @@
   }
   
   body {
-    @apply bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen text-gray-100;
+    @apply min-h-screen transition-colors duration-200;
+  }
+  
+  /* Light theme */
+  .light body {
+    @apply bg-white text-gray-900;
+  }
+  
+  /* Dark theme */
+  .dark body {
+    @apply bg-gray-800 text-gray-100;
   }
 }
 
@@ -18,11 +28,27 @@
   }
   
   .chat-bubble-user {
-    @apply bg-primary-500 text-white ml-auto;
+    @apply ml-auto;
+  }
+  
+  .light .chat-bubble-user {
+    @apply bg-gray-900 text-white;
+  }
+  
+  .dark .chat-bubble-user {
+    @apply bg-gray-100 text-gray-900;
   }
   
   .chat-bubble-ai {
-    @apply bg-gray-700 text-gray-100 border border-gray-600;
+    @apply border;
+  }
+  
+  .light .chat-bubble-ai {
+    @apply bg-gray-100 text-gray-900 border-gray-200;
+  }
+  
+  .dark .chat-bubble-ai {
+    @apply bg-gray-800 text-gray-100 border-gray-700;
   }
   
   .typing-indicator {
@@ -111,47 +137,39 @@
   }
 }
 
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) rotate(0deg);
-  }
-  15% {
-    opacity: 0.8;
-    transform: scale(1.1) rotate(5deg);
-  }
-  85% {
-    opacity: 0.8;
-    transform: scale(1.1) rotate(-5deg);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.8) rotate(0deg);
-  }
-}
 
-.floating-slang {
-  animation: fadeInOut 6s ease-in-out forwards;
-  text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
-}
 
 /* Скроллбар */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(55, 65, 81, 0.3);
+.light ::-webkit-scrollbar-track {
+  background: rgba(243, 244, 246, 0.8);
   border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.5);
+.dark ::-webkit-scrollbar-track {
+  background: rgba(55, 65, 81, 0.8);
   border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.7);
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.6);
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.6);
+  border-radius: 3px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
 }
 
 /* Улучшенная прокрутка для чата */

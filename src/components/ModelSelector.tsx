@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { AI_MODELS, AIModelKey } from '../config/constants'
+import { useTheme } from '../contexts/ThemeContext'
 
 interface ModelSelectorProps {
   selectedModel: AIModelKey
@@ -13,6 +14,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled = false 
 }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const { themeColors } = useTheme()
 
   const selectedModelData = AI_MODELS[selectedModel]
 
@@ -21,11 +23,11 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className="flex items-center space-x-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`flex items-center space-x-2 px-3 py-2 ${themeColors.buttonSecondary} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         <div className="flex flex-col items-start">
-          <span className="text-sm font-medium">{selectedModelData.name}</span>
-          <span className="text-xs text-gray-400 truncate max-w-32">
+          <span className={`text-sm font-medium ${themeColors.text}`}>{selectedModelData.name}</span>
+          <span className={`text-xs ${themeColors.textTertiary} truncate max-w-32`}>
             {selectedModelData.description.split(' ').slice(0, 4).join(' ')}...
           </span>
         </div>
@@ -40,7 +42,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50">
+        <div className={`absolute top-full right-0 mt-1 w-80 ${themeColors.dropdown} border ${themeColors.border} rounded-lg shadow-xl z-50`}>
           <div className="p-2 flex flex-col gap-2">
             {Object.entries(AI_MODELS).map(([key, model]) => (
               <button
@@ -51,8 +53,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 }}
                 className={`w-full text-left p-3 rounded-lg transition-colors ${
                   selectedModel === key
-                    ? 'bg-purple-600 text-white'
-                    : 'hover:bg-gray-700 text-gray-200'
+                    ? themeColors.dropdownItemSelected
+                    : themeColors.dropdownItem
                 }`}
               >
                 <div className="flex flex-col">
@@ -64,7 +66,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-gray-400 mt-1">
+                  <span className={`text-sm ${themeColors.textTertiary} mt-1`}>
                     {model.description}
                   </span>
                 </div>
