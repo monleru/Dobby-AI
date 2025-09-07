@@ -1,7 +1,30 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import { chatApi, ContextInfo } from '../services/api'
-import { AIModelKey, AI_MODELS } from '../config/constants'
+import { AIModelKey, AI_MODELS, LOCALSTORAGE_KEYS } from '../config/constants'
+
+// Helper functions for localStorage
+const saveSelectedModelToStorage = (model: AIModelKey) => {
+  try {
+    localStorage.setItem(LOCALSTORAGE_KEYS.SELECTED_MODEL, model)
+    console.log('💾 Saved selected model to localStorage:', model)
+  } catch (error) {
+    console.error('❌ Error saving model to localStorage:', error)
+  }
+}
+
+const loadSelectedModelFromStorage = (): AIModelKey | null => {
+  try {
+    const savedModel = localStorage.getItem(LOCALSTORAGE_KEYS.SELECTED_MODEL) as AIModelKey
+    if (savedModel && savedModel in AI_MODELS) {
+      console.log('📂 Loaded selected model from localStorage:', savedModel)
+      return savedModel
+    }
+  } catch (error) {
+    console.error('❌ Error loading model from localStorage:', error)
+  }
+  return null
+}
 
 export interface ChatMessage {
   id: string
@@ -52,7 +75,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isLoading: false,
   sessionId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
   userId: undefined,
-  selectedModel: 'dobby-70b',
+  selectedModel: loadSelectedModelFromStorage() || 'dobby-70b',
   currentContextId: undefined,
   messageHistory: [],
   serverContexts: [],
@@ -64,6 +87,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setSelectedModel: (model: AIModelKey) => {
     set({ selectedModel: model })
+    saveSelectedModelToStorage(model)
   },
 
   addMessage: (content: string, isUser: boolean, isLoading = false, userId?: string, contextId?: string, parentMessageId?: string) => {

@@ -41,7 +41,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50">
-          <div className="p-2">
+          <div className="p-2 flex flex-col gap-2">
             {Object.entries(AI_MODELS).map(([key, model]) => (
               <button
                 key={key}

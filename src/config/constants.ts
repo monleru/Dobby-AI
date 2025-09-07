@@ -13,7 +13,16 @@ export const AI_MODELS = {
     endpoint: 'accounts/sentientfoundation-serverless/models/dobby-mini-unhinged-plus-llama-3-1-8b',
     name: 'Dobby Mini',
     description: 'Lightweight 1.8B parameter model for fast responses'
+  },  'dobby-ddg': {
+    endpoint: 'mcp/dobby-unhinged-llama-3-3-70b-new',
+    name: 'Dobby DDG',
+    description: 'Full 70B parameter model for high-quality responses and DDG mcp integration'
   }
 } as const;
 
-export type AIModelKey = keyof typeof AI_MODELS; 
+export type AIModelKey = keyof typeof AI_MODELS;
+
+// localStorage keys
+export const LOCALSTORAGE_KEYS = {
+  SELECTED_MODEL: 'dobby-selected-model'
+} as const; 

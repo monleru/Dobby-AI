@@ -218,7 +218,7 @@ const ChatView: React.FC = () => {
                   // Use messages.length directly instead of hasMessages
                   return messages.length > 0
                 })() && (
-                  <div className="sticky top-0 z-10 flex justify-end mb-4 pb-2 bg-gradient-to-b from-gray-800/90 to-transparent">
+                  <div className="sticky top-0 z-10 flex justify-end mb-4 pb-2 from-gray-800/90 to-transparent">
                     <button
                       onClick={handleShareClick}
                       className="flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
