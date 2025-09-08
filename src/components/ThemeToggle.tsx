@@ -18,7 +18,7 @@ const ThemeToggle: React.FC = () => {
       <span
         className={`
           inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out
-          ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}
+          ${theme === 'dark' ? 'translate-x-7' : 'translate-x-0.5'}
         `}
       >
         <div className="flex h-full w-full items-center justify-center">

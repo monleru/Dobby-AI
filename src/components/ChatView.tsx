@@ -10,6 +10,7 @@ import ContextNavigator from './ContextNavigator'
 import LoadingScreen from './LoadingScreen'
 import ShareModal from './ShareModal'
 import ThemeToggle from './ThemeToggle'
+import VoiceInput from './VoiceInput'
 
 const ChatView: React.FC = () => {
   const { authenticated, user, login, getAccessToken, ready } = usePrivy()
@@ -54,6 +55,10 @@ const ChatView: React.FC = () => {
     const accessToken = await getAccessToken()
     
     await sendMessage(message, user?.id, undefined, accessToken || undefined)
+  }
+
+  const handleVoiceTranscript = (transcript: string) => {
+    setInputMessage(transcript)
   }
 
   const scrollToBottom = () => {
@@ -328,14 +333,20 @@ const ChatView: React.FC = () => {
             {/* Input Area */}
             <div className={`border-t ${themeColors.border} p-3 flex-shrink-0 min-h-0`}>
               <form onSubmit={handleSubmit} className="flex space-x-3">
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask me anything"
-                  className={`flex-1 px-4 py-3 border ${themeColors.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${themeColors.input}`}
-                  disabled={isLoading}
-                />
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Ask me anything"
+                    className={`w-full px-4 py-3 pr-12 border ${themeColors.border} rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${themeColors.input}`}
+                    disabled={isLoading}
+                  />
+                  <VoiceInput 
+                    onTranscript={handleVoiceTranscript}
+                    disabled={isLoading}
+                  />
+                </div>
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || isLoading}
