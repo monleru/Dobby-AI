@@ -12,6 +12,8 @@ const APISection: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [hasShownConfirmation, setHasShownConfirmation] = useState(false)
   
   const dailyRequests = getDailyRequests()
   const usageData = getUsageData()
@@ -40,6 +42,11 @@ const APISection: React.FC = () => {
       if (accessToken) {
         await createApiKey(accessToken)
         setShowCreateModal(false)
+        // Show confirmation modal only once after successful creation
+        if (!hasShownConfirmation) {
+          setShowConfirmationModal(true)
+          setHasShownConfirmation(true)
+        }
       }
     } catch (error) {
       console.error('Error creating API key:', error)
@@ -62,18 +69,6 @@ const APISection: React.FC = () => {
     }
   }
 
-  const handleToggleApiKey = async () => {
-    if (apiKey) {
-      try {
-        const accessToken = await getAccessToken()
-        if (accessToken) {
-          await updateApiKey({ isActive: !apiKey.isActive }, accessToken)
-        }
-      } catch (error) {
-        console.error('Error updating API key:', error)
-      }
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -95,7 +90,7 @@ const APISection: React.FC = () => {
               <div className="flex space-x-2">
                 <input
                   type={showApiKey ? 'text' : 'password'}
-                  value={apiKey.key}
+                  value={showApiKey ? apiKey.key : '•'.repeat(apiKey.key?.length || 0)}
                   readOnly
                   className={`flex-1 px-3 py-2 ${themeColors.backgroundTertiary} border ${themeColors.border} rounded-lg ${themeColors.text} font-mono text-sm`}
                 />
@@ -142,16 +137,6 @@ const APISection: React.FC = () => {
               <div className={`text-xs ${themeColors.textSecondary}`}>
                 Keep your API key secure and never share it publicly. This key provides access to your account.
               </div>
-              <button
-                onClick={handleToggleApiKey}
-                className={`px-3 py-1 text-xs rounded-lg transition-colors duration-200 ${
-                  apiKey.isActive 
-                    ? 'bg-red-600 hover:bg-red-700 text-white' 
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                }`}
-              >
-                {apiKey.isActive ? 'Deactivate' : 'Activate'}
-              </button>
             </div>
             
             <div className={`text-xs ${themeColors.textTertiary}`}>
@@ -282,15 +267,9 @@ const APISection: React.FC = () => {
               <div className={`${themeColors.backgroundTertiary} p-3 rounded`}>
                 <h5 className={`font-medium text-sm ${themeColors.text} mb-1`}>Dobby Models</h5>
                 <ul className={`text-xs ${themeColors.textSecondary} space-y-1`}>
-                  <li>• <code>dobby-70b</code> - Main Dobby model (70B parameters)</li>
-                  <li>• <code>mcp/dobby-unhinged-llama-3-3-70b-new</code> - Unhinged Llama model</li>
-                </ul>
-              </div>
-              <div className={`${themeColors.backgroundTertiary} p-3 rounded`}>
-                <h5 className={`font-medium text-sm ${themeColors.text} mb-1`}>OpenAI Models</h5>
-                <ul className={`text-xs ${themeColors.textSecondary} space-y-1`}>
-                  <li>• <code>gpt-3.5-turbo</code> - GPT-3.5 Turbo</li>
-                  <li>• <code>gpt-4</code> - GPT-4</li>
+                  <li>• <code>Dobby-70b</code> - Main Dobby model (70B parameters)</li>
+                  <li>• <code>Dobby mini</code> - Lightweight 1.8B parameter model for fast responses</li>
+                  <li>• <code>Dobby DDG</code> - Dobby 70B with DDG mcp integration</li>
                 </ul>
               </div>
             </div>
@@ -308,7 +287,7 @@ const APISection: React.FC = () => {
               </div>
               <div className="p-4">
                 <CodeHighlighter
-                  code={`curl -X POST http://localhost:3001/v1/chat/completions \\
+                  code={`curl -X POST https://api.dobby.monleru.fun/v1/chat/completions \\
   -H "X-API-Key: ${apiKey?.key ? apiKey.key.substring(0, 20) + '...' : 'dobby_your_api_key_here'}" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -344,7 +323,7 @@ const APISection: React.FC = () => {
                   code={`import openai
 
 # Configure the client
-openai.api_base = "http://localhost:3001/v1"
+openai.api_base = "https://api.dobby.monleru.fun/v1"
 openai.api_key = "${apiKey?.key ? apiKey.key.substring(0, 20) + '...' : 'dobby_your_api_key_here'}"
 
 # Create a chat completion
@@ -380,7 +359,7 @@ print(response.choices[0].message.content)`}
                   code={`import OpenAI from 'openai';
 
 const openai = new OpenAI({
-  baseURL: 'http://localhost:3001/v1',
+  baseURL: 'https://api.dobby.monleru.fun/v1',
   apiKey: '${apiKey?.key ? apiKey.key.substring(0, 20) + '...' : 'dobby_your_api_key_here'}',
 });
 
@@ -563,6 +542,54 @@ async function chatWithDobby() {
                     <span>Create API Key</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* API Key Generated Confirmation Modal */}
+      {showConfirmationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`${themeColors.backgroundSecondary} rounded-xl shadow-xl border ${themeColors.border} p-6 max-w-md w-full mx-4`}>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className={`text-lg font-semibold ${themeColors.text}`}>API Key Generated!</h3>
+            </div>
+            
+            <p className={`text-sm ${themeColors.textSecondary} mb-4`}>
+              Your API key has been successfully created. You can now use it to access Dobby AI programmatically.
+            </p>
+            
+            <div className={`${themeColors.backgroundTertiary} rounded-lg p-4 mb-6`}>
+              <h4 className={`text-sm font-medium ${themeColors.text} mb-2`}>Next Steps:</h4>
+              <ul className={`text-xs ${themeColors.textSecondary} space-y-1`}>
+                <li>• Copy your API key from the field above</li>
+                <li>• Store it securely in your environment variables</li>
+                <li>• Use it with the OpenAI-compatible API endpoints</li>
+                <li>• Check the documentation below for examples</li>
+              </ul>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowConfirmationModal(false)}
+                className={`flex-1 px-4 py-2 ${themeColors.buttonSecondary} rounded-lg transition-colors duration-200`}
+              >
+                Got it!
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmationModal(false)
+                  setShowApiKey(true)
+                }}
+                className={`flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-200`}
+              >
+                Show API Key
               </button>
             </div>
           </div>
