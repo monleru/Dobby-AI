@@ -3,33 +3,35 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { usePrivy } from '@privy-io/react-auth'
 import { useChatStore } from '../stores/chatStore'
+import { useLoadingStore } from '../stores/loadingStore'
 import { useTheme } from '../contexts/ThemeContext'
-import LoginButton from './LoginButton'
 import ModelSelector from './ModelSelector'
 import ContextNavigator from './ContextNavigator'
 import LoadingScreen from './LoadingScreen'
 import ShareModal from './ShareModal'
-import ThemeToggle from './ThemeToggle'
 import VoiceInput from './VoiceInput'
+import Header from './Header'
 
 const ChatView: React.FC = () => {
   const { authenticated, user, login, getAccessToken, ready } = usePrivy()
-  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer, currentContextId } = useChatStore()
+  const { messages, isLoading, sendMessage, hasMessages, setUserId, selectedModel, setSelectedModel, loadContextsFromServer, currentContextId, loadCreditStatus, getCreditStatus, getDailyRequests } = useChatStore()
+  const { minLoadingComplete, setMinLoadingComplete } = useLoadingStore()
   const { themeColors } = useTheme()
   const [inputMessage, setInputMessage] = useState('')
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
-  const [minLoadingComplete, setMinLoadingComplete] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Ensure minimum loading time of 3 seconds
+  // Ensure minimum loading time of 3 seconds (only if not already completed)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinLoadingComplete(true)
-    }, 3000)
+    if (!minLoadingComplete) {
+      const timer = setTimeout(() => {
+        setMinLoadingComplete(true)
+      }, 3000)
 
-    return () => clearTimeout(timer)
-  }, [])
+      return () => clearTimeout(timer)
+    }
+  }, [minLoadingComplete, setMinLoadingComplete])
 
   const suggestions = [
     '2 + 2 = ?',
@@ -97,17 +99,20 @@ const ChatView: React.FC = () => {
       const userId = user.id
       setUserId(userId)
       
-      // Load contexts from server when user is authenticated
-      const loadContexts = async () => {
+      // Load contexts and credit status from server when user is authenticated
+      const loadData = async () => {
         const accessToken = await getAccessToken()
         if (accessToken) {
-          await loadContextsFromServer(accessToken)
+          await Promise.all([
+            loadContextsFromServer(accessToken),
+            loadCreditStatus(accessToken)
+          ])
         }
       }
       
-      loadContexts()
+      loadData()
     }
-  }, [authenticated, user, setUserId, getAccessToken, loadContextsFromServer])
+  }, [authenticated, user, setUserId, getAccessToken, loadContextsFromServer, loadCreditStatus])
 
   // Check for shared chat history in URL
 
@@ -115,6 +120,7 @@ const ChatView: React.FC = () => {
   if (!ready || !minLoadingComplete) {
     return <LoadingScreen />
   }
+
 
   return (
     <div className={`h-screen ${themeColors.background} flex flex-col relative overflow-hidden transition-colors duration-200`}>
@@ -126,53 +132,7 @@ const ChatView: React.FC = () => {
       
       <div className="relative z-10 flex flex-col h-full min-h-0">
         {/* Header */}
-        <header className={`${themeColors.backgroundSecondary} shadow-lg border-b ${themeColors.border} flex-shrink-0`}>
-          <div className="max-w-6xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                <img src="/logo.png" alt="Dobby AI Logo" className="w-full h-full object-cover" />
-              </div>
-                <div>
-                  <h1 className={`text-xl font-bold ${themeColors.text}`}>Dobby AI</h1>
-                  <p className={`text-sm ${themeColors.textSecondary}`}>Dobby AI powered by Sentient</p>
-                </div>
-              </div>
-              
-              {/* Right side buttons */}
-              <div className="flex items-center space-x-3">
-                {/* Theme Toggle */}
-                <ThemeToggle />
-                {/* Social Buttons */}
-                {/* <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={() => window.open(TELEGRAM_URL, '_blank')}
-                    className="text-xs bg-blue-500 hover:bg-blue-600 hover:scale-105 transition text-white px-3 py-2 rounded transition-colors font-medium flex items-center space-x-2"
-                    title="Chat with Dobby on Telegram"
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                    </svg>
-                    <span>Telegram</span>
-                  </button>
-                  <button 
-                    onClick={() => window.open(X_URL, '_blank')}
-                    className="text-xs bg-black hover:scale-105 transition text-white px-3 py-2 rounded transition-colors font-medium flex items-center space-x-2"
-                    title="Follow @monleru on X"
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                    <span>Follow @monleru</span>
-                  </button>
-                </div> */}
-                
-                {/* Login Button */}
-                <LoginButton />
-              </div>
-            </div>
-          </div>
-        </header>
+        <Header />
 
         {/* Chat Container or Login Prompt */}
         <div className="max-w-4xl mx-auto px-4 flex-1 py-2 flex flex-col min-h-0">
@@ -215,13 +175,23 @@ const ChatView: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <ContextNavigator />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`text-sm ${themeColors.textSecondary}`}>AI Model:</span>
-                  <ModelSelector 
-                    selectedModel={selectedModel}
-                    onModelChange={setSelectedModel}
-                    disabled={isLoading}
-                  />
+                <div className="flex items-center space-x-4">
+                  {/* Credit Count Display */}
+                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className={`text-sm font-medium ${themeColors.text}`}>
+                      {getCreditStatus()?.remainingCredits ?? getDailyRequests().remainingToday} {getCreditStatus() ? 'Credits' : 'Requests'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <span className={`text-sm ${themeColors.textSecondary}`}>AI Model:</span>
+                    <ModelSelector 
+                      selectedModel={selectedModel}
+                      onModelChange={setSelectedModel}
+                      disabled={isLoading}
+                    />
+                  </div>
                 </div>
               </div>
               

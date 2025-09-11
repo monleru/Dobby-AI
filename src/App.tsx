@@ -2,6 +2,7 @@ import { Routes, Route, useParams } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
 import ChatView from './components/ChatView'
 import SharedChatView from './components/SharedChatView'
+import ProfilePageRoute from './components/ProfilePageRoute'
 
 function SharedChatWrapper() {
   const { shareId } = useParams<{ shareId: string }>()
@@ -14,6 +15,7 @@ function App() {
       <div className="min-h-screen">
         <Routes>
           <Route path="/" element={<ChatView />} />
+          <Route path="/profile" element={<ProfilePageRoute />} />
           <Route path="/shared/:shareId" element={<SharedChatWrapper />} />
         </Routes>
       </div>

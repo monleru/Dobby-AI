@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import { chatApi, ContextInfo } from '../services/api'
+import { chatApi, ContextInfo, ApiKeyData, ApiKeyResponse, CreditStatus, CreditTransaction, CreditHistory } from '../services/api'
 import { AIModelKey, AI_MODELS, LOCALSTORAGE_KEYS } from '../config/constants'
 
 // Helper functions for localStorage
@@ -45,6 +45,20 @@ export interface ConversationHistory {
   contextId?: string // Chat history UUID
 }
 
+export interface UsageData {
+  date: string
+  requests: number
+}
+
+// Credit system interfaces (keeping for backward compatibility)
+export interface DailyRequestsData {
+  dailyLimit: number
+  usedToday: number
+  remainingToday: number
+  lastResetDate: string
+  totalRequests: number
+}
+
 interface ChatStore {
   messages: ChatMessage[]
   isLoading: boolean
@@ -55,6 +69,15 @@ interface ChatStore {
   messageHistory: ChatMessage[] // Full message history for chat history navigation
   serverContexts: ContextInfo[] // Contexts loaded from server
   contextsLoading: boolean
+  usageData: UsageData[] // AI chat usage tracking
+  dailyRequests: DailyRequestsData // Daily requests system (legacy)
+  apiKey: ApiKeyData | null // Current API key
+  apiKeyLoading: boolean // API key loading state
+  // Credit system
+  creditStatus: CreditStatus | null // Current credit status from backend
+  creditTransactions: CreditTransaction[] // Credit transaction history
+  creditHistory: CreditHistory | null // Credit usage history
+  creditLoading: boolean // Credit system loading state
   sendMessage: (content: string, userId?: string, model?: AIModelKey, accessToken?: string, contextId?: string) => Promise<void>
   addMessage: (content: string, isUser: boolean, isLoading?: boolean, userId?: string, contextId?: string, parentMessageId?: string) => void
   clearChat: () => void
@@ -68,6 +91,116 @@ interface ChatStore {
   loadContextFromServer: (contextId: string, accessToken?: string) => Promise<void>
   shareChatHistory: () => Promise<void>
   loadSharedChatHistory: (sharedData: any) => void
+  trackUsage: () => void
+  getUsageData: () => UsageData[]
+  checkDailyLimit: () => boolean
+  useDailyRequest: () => boolean
+  resetDailyRequests: () => void
+  getDailyRequests: () => DailyRequestsData
+  // API Key management
+  createApiKey: (accessToken: string) => Promise<ApiKeyResponse>
+  regenerateApiKey: (accessToken: string) => Promise<ApiKeyResponse>
+  getApiKey: (accessToken: string) => Promise<ApiKeyResponse>
+  updateApiKey: (updates: { name?: string; isActive?: boolean }, accessToken: string) => Promise<ApiKeyResponse>
+  loadApiKeyFromServer: (accessToken: string) => Promise<void>
+  // Credit system management
+  loadCreditStatus: (accessToken?: string) => Promise<void>
+  loadCreditTransactions: (limit?: number, accessToken?: string) => Promise<void>
+  loadCreditHistory: (days?: number, accessToken?: string) => Promise<void>
+  getCreditStatus: () => CreditStatus | null
+  getCreditTransactions: () => CreditTransaction[]
+  getCreditHistory: () => CreditHistory | null
+}
+
+// Helper function to load usage data from localStorage
+const loadUsageDataFromStorage = (): UsageData[] => {
+  try {
+    const saved = localStorage.getItem('dobby-ai-usage-data')
+    if (saved) {
+      return JSON.parse(saved)
+    }
+  } catch (error) {
+    console.error('❌ Error loading usage data from localStorage:', error)
+  }
+  return []
+}
+
+// Helper function to save usage data to localStorage
+const saveUsageDataToStorage = (data: UsageData[]) => {
+  try {
+    localStorage.setItem('dobby-ai-usage-data', JSON.stringify(data))
+  } catch (error) {
+    console.error('❌ Error saving usage data to localStorage:', error)
+  }
+}
+
+// Helper function to generate mock usage data for demonstration
+const generateMockUsageData = (): UsageData[] => {
+  const data: UsageData[] = []
+  const today = new Date()
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    
+    // Generate realistic usage pattern with some randomness
+    const baseRequests = Math.floor(Math.random() * 15) + 5
+    const dayOfWeek = date.getDay()
+    const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.7 : 1.2
+    const requests = Math.floor(baseRequests * weekendMultiplier)
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      requests: Math.max(0, requests)
+    })
+  }
+  
+  return data
+}
+
+// Helper function to load daily requests data from localStorage
+const loadDailyRequestsFromStorage = (): DailyRequestsData => {
+  try {
+    const saved = localStorage.getItem('dobby-ai-daily-requests')
+    if (saved) {
+      const data = JSON.parse(saved)
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Reset daily count if it's a new day
+      if (data.lastResetDate !== today) {
+        return {
+          dailyLimit: 500,
+          usedToday: 0,
+          remainingToday: 500,
+          lastResetDate: today,
+          totalRequests: data.totalRequests || 0
+        }
+      }
+      
+      return data
+    }
+  } catch (error) {
+    console.error('❌ Error loading daily requests from localStorage:', error)
+  }
+  
+  // Default daily requests for new users
+  const today = new Date().toISOString().split('T')[0]
+  return {
+    dailyLimit: 500,
+    usedToday: 0,
+    remainingToday: 500,
+    lastResetDate: today,
+    totalRequests: 0
+  }
+}
+
+// Helper function to save daily requests data to localStorage
+const saveDailyRequestsToStorage = (dailyRequests: DailyRequestsData) => {
+  try {
+    localStorage.setItem('dobby-ai-daily-requests', JSON.stringify(dailyRequests))
+  } catch (error) {
+    console.error('❌ Error saving daily requests to localStorage:', error)
+  }
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -80,6 +213,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   messageHistory: [],
   serverContexts: [],
   contextsLoading: false,
+  usageData: loadUsageDataFromStorage().length > 0 ? loadUsageDataFromStorage() : generateMockUsageData(),
+  dailyRequests: loadDailyRequestsFromStorage(),
+  apiKey: null,
+  apiKeyLoading: false,
+  creditStatus: null,
+  creditTransactions: [],
+  creditHistory: null,
+  creditLoading: false,
 
   setUserId: (userId: string) => {
     set({ userId })
@@ -117,10 +258,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   sendMessage: async (content: string, userId?: string, model?: AIModelKey, accessToken?: string, contextId?: string) => {
     if (!content.trim()) return
 
-    const { addMessage, messages, sessionId, userId: currentUserId, selectedModel, currentContextId } = get()
+    const { addMessage, messages, sessionId, userId: currentUserId, selectedModel, currentContextId, trackUsage, apiKey, creditStatus } = get()
     const finalUserId = userId || currentUserId
     const finalModel = model || selectedModel
     const finalHistoryId = contextId || currentContextId || uuidv4() // Create new context if none exists
+    
+    // Check if user has credits available (backend will handle the actual charging)
+    if (creditStatus && !creditStatus.canMakeRequest) {
+      addMessage('Insufficient credits. You have used all your daily credits. Please try again tomorrow.', false, false, finalUserId, finalHistoryId)
+      return
+    }
     
     // Build conversation history for chat history
     const conversationHistory: ConversationHistory[] = messages
@@ -133,6 +280,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }))
     
     console.log('🔍 Debug - Current contextId:', currentContextId, 'Final historyId:', finalHistoryId, 'Messages count:', messages.length, 'Conversation history length:', conversationHistory.length)
+    
+    // Track usage when user sends a message
+    trackUsage()
     
     // Добавляем сообщение пользователя
     addMessage(content, true, false, finalUserId, finalHistoryId)
@@ -158,8 +308,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     try {
       const modelEndpoint = finalModel ? AI_MODELS[finalModel].endpoint : 'default'
-      console.log('📤 Sending message with model:', finalModel, 'endpoint:', modelEndpoint, 'for user:', finalUserId, 'with auth token:', accessToken ? 'Present' : 'Missing', 'context ID:', finalHistoryId)
-      const response = await chatApi.sendMessage(content, sessionId, conversationHistory, finalModel, accessToken, finalHistoryId)
+      console.log('📤 Sending message with model:', finalModel, 'endpoint:', modelEndpoint, 'for user:', finalUserId, 'with auth method:', apiKey ? 'API Key' : accessToken ? 'Privy Token' : 'None', 'context ID:', finalHistoryId)
+      const response = await chatApi.sendMessage(content, sessionId, conversationHistory, finalModel, accessToken, finalHistoryId, apiKey?.key)
       
       // Удаляем индикатор загрузки и добавляем ответ
       set((state) => ({
@@ -169,7 +319,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }))
       
       addMessage(response.response, false, false, finalUserId, finalHistoryId)
-    } catch (error) {
+      
+      // Refresh credit status after successful request
+      if (accessToken) {
+        get().loadCreditStatus(accessToken)
+      }
+    } catch (error: any) {
       console.error('Error in chat store:', error)
       
       // Удаляем индикатор загрузки и добавляем сообщение об ошибке
@@ -179,7 +334,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         isLoading: false
       }))
       
-      addMessage('Sorry, an error occurred. Please try again!', false, false, finalUserId, finalHistoryId)
+      // Handle credit errors specifically
+      if (error.response?.status === 402) {
+        addMessage('Insufficient credits. You have used all your daily credits. Please try again tomorrow.', false, false, finalUserId, finalHistoryId)
+        // Refresh credit status to update UI
+        if (accessToken) {
+          get().loadCreditStatus(accessToken)
+        }
+      } else {
+        addMessage('Sorry, an error occurred. Please try again!', false, false, finalUserId, finalHistoryId)
+      }
     }
   },
 
@@ -228,7 +392,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     
     try {
       console.log('📥 Loading contexts from server...')
-      const response = await chatApi.getContexts(accessToken)
+      const { apiKey } = get()
+      const response = await chatApi.getContexts(accessToken, apiKey?.key)
       
       console.log('✅ Loaded contexts from server:', response.contexts.length, 'contexts')
       
@@ -250,7 +415,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     try {
       console.log('📥 Loading context from server:', contextId)
-      const contextInfo = await chatApi.getContext(contextId, accessToken)
+      const { apiKey } = get()
+      const contextInfo = await chatApi.getContext(contextId, accessToken, apiKey?.key)
       
       // Convert server messages to local format
       const serverMessages: ChatMessage[] = contextInfo.messages.map((msg: any) => ({
@@ -377,5 +543,307 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   get hasMessages() {
     return get().messages.length > 0
+  },
+
+  trackUsage: () => {
+    const { usageData } = get()
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Find today's entry or create it
+    const todayIndex = usageData.findIndex(item => item.date === today)
+    
+    if (todayIndex >= 0) {
+      // Increment today's count
+      const updatedData = [...usageData]
+      updatedData[todayIndex] = {
+        ...updatedData[todayIndex],
+        requests: updatedData[todayIndex].requests + 1
+      }
+      
+      set({ usageData: updatedData })
+      saveUsageDataToStorage(updatedData)
+    } else {
+      // Add new entry for today
+      const updatedData = [
+        ...usageData,
+        { date: today, requests: 1 }
+      ]
+      
+      set({ usageData: updatedData })
+      saveUsageDataToStorage(updatedData)
+    }
+    
+    console.log('📊 Usage tracked for', today)
+  },
+
+  getUsageData: () => {
+    return get().usageData
+  },
+
+  checkDailyLimit: () => {
+    const { dailyRequests } = get()
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Reset if it's a new day
+    if (dailyRequests.lastResetDate !== today) {
+      const updatedDailyRequests: DailyRequestsData = {
+        dailyLimit: 500,
+        usedToday: 0,
+        remainingToday: 500,
+        lastResetDate: today,
+        totalRequests: dailyRequests.totalRequests
+      }
+      
+      set({ dailyRequests: updatedDailyRequests })
+      saveDailyRequestsToStorage(updatedDailyRequests)
+      
+      return true // Can use request after reset
+    }
+    
+    return dailyRequests.remainingToday > 0
+  },
+
+  useDailyRequest: () => {
+    const { dailyRequests } = get()
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Reset if it's a new day
+    if (dailyRequests.lastResetDate !== today) {
+      const updatedDailyRequests: DailyRequestsData = {
+        dailyLimit: 500,
+        usedToday: 1,
+        remainingToday: 499,
+        lastResetDate: today,
+        totalRequests: dailyRequests.totalRequests + 1
+      }
+      
+      set({ dailyRequests: updatedDailyRequests })
+      saveDailyRequestsToStorage(updatedDailyRequests)
+      
+      console.log('📊 Daily request used (reset): 1/500')
+      return true
+    }
+    
+    if (dailyRequests.remainingToday <= 0) {
+      console.log('❌ Daily request limit reached:', dailyRequests.usedToday, '/', dailyRequests.dailyLimit)
+      return false
+    }
+    
+    const updatedDailyRequests: DailyRequestsData = {
+      ...dailyRequests,
+      usedToday: dailyRequests.usedToday + 1,
+      remainingToday: dailyRequests.remainingToday - 1,
+      totalRequests: dailyRequests.totalRequests + 1
+    }
+    
+    set({ dailyRequests: updatedDailyRequests })
+    saveDailyRequestsToStorage(updatedDailyRequests)
+    
+    console.log('📊 Daily request used:', updatedDailyRequests.usedToday, '/', updatedDailyRequests.dailyLimit, 'Remaining:', updatedDailyRequests.remainingToday)
+    return true
+  },
+
+  resetDailyRequests: () => {
+    const today = new Date().toISOString().split('T')[0]
+    const updatedDailyRequests: DailyRequestsData = {
+      dailyLimit: 500,
+      usedToday: 0,
+      remainingToday: 500,
+      lastResetDate: today,
+      totalRequests: get().dailyRequests.totalRequests
+    }
+    
+    set({ dailyRequests: updatedDailyRequests })
+    saveDailyRequestsToStorage(updatedDailyRequests)
+    
+    console.log('🔄 Daily requests reset for new day')
+  },
+
+  getDailyRequests: () => {
+    return get().dailyRequests
+  },
+
+  // API Key management methods
+  createApiKey: async (accessToken: string) => {
+    set({ apiKeyLoading: true })
+    
+    try {
+      const response = await chatApi.createDefaultApiKey(accessToken)
+      
+      if (response.success && response.data) {
+        set({ apiKey: response.data, apiKeyLoading: false })
+        console.log('✅ API key created successfully')
+      }
+      
+      return response
+    } catch (error) {
+      console.error('❌ Error creating API key:', error)
+      set({ apiKeyLoading: false })
+      throw error
+    }
+  },
+
+  regenerateApiKey: async (accessToken: string) => {
+    set({ apiKeyLoading: true })
+    
+    try {
+      const oneYearFromNow = new Date()
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1)
+      
+      const response = await chatApi.regenerateApiKey(
+        'Dobby AI API Key',
+        ['chat:send', 'chat:history', 'chat:contexts', 'chat:shared'],
+        oneYearFromNow.toISOString(),
+        accessToken
+      )
+      
+      if (response.success && response.data) {
+        set({ apiKey: response.data, apiKeyLoading: false })
+        console.log('✅ API key regenerated successfully')
+      }
+      
+      return response
+    } catch (error) {
+      console.error('❌ Error regenerating API key:', error)
+      set({ apiKeyLoading: false })
+      throw error
+    }
+  },
+
+  getApiKey: async (accessToken: string) => {
+    set({ apiKeyLoading: true })
+    
+    try {
+      const response = await chatApi.getApiKey(accessToken)
+      
+      if (response.success && response.data) {
+        set({ apiKey: response.data, apiKeyLoading: false })
+        console.log('✅ API key loaded successfully')
+      } else {
+        set({ apiKey: null, apiKeyLoading: false })
+        console.log('ℹ️ No API key found')
+      }
+      
+      return response
+    } catch (error) {
+      console.error('❌ Error loading API key:', error)
+      set({ apiKey: null, apiKeyLoading: false })
+      throw error
+    }
+  },
+
+  updateApiKey: async (updates: { name?: string; isActive?: boolean }, accessToken: string) => {
+    set({ apiKeyLoading: true })
+    
+    try {
+      const response = await chatApi.updateApiKey(updates, accessToken)
+      
+      if (response.success && response.data) {
+        set({ apiKey: response.data, apiKeyLoading: false })
+        console.log('✅ API key updated successfully')
+      }
+      
+      return response
+    } catch (error) {
+      console.error('❌ Error updating API key:', error)
+      set({ apiKeyLoading: false })
+      throw error
+    }
+  },
+
+  loadApiKeyFromServer: async (accessToken: string) => {
+    try {
+      await get().getApiKey(accessToken)
+    } catch (error) {
+      console.error('❌ Error loading API key from server:', error)
+    }
+  },
+
+  // Credit system management methods
+  loadCreditStatus: async (accessToken?: string) => {
+    if (!accessToken) {
+      console.log('⚠️ No access token provided for loading credit status')
+      return
+    }
+
+    set({ creditLoading: true })
+    
+    try {
+      const { apiKey } = get()
+      const response = await chatApi.getCreditStatus(accessToken, apiKey?.key)
+      
+      if (response.success && response.data) {
+        set({ creditStatus: response.data as CreditStatus, creditLoading: false })
+        console.log('✅ Credit status loaded successfully')
+      } else {
+        set({ creditStatus: null, creditLoading: false })
+        console.log('ℹ️ No credit status found')
+      }
+    } catch (error) {
+      console.error('❌ Error loading credit status:', error)
+      set({ creditStatus: null, creditLoading: false })
+    }
+  },
+
+  loadCreditTransactions: async (limit: number = 50, accessToken?: string) => {
+    if (!accessToken) {
+      console.log('⚠️ No access token provided for loading credit transactions')
+      return
+    }
+
+    set({ creditLoading: true })
+    
+    try {
+      const { apiKey } = get()
+      const response = await chatApi.getCreditTransactions(limit, accessToken, apiKey?.key)
+      
+      if (response.success && response.data) {
+        set({ creditTransactions: response.data as CreditTransaction[], creditLoading: false })
+        console.log('✅ Credit transactions loaded successfully')
+      } else {
+        set({ creditTransactions: [], creditLoading: false })
+        console.log('ℹ️ No credit transactions found')
+      }
+    } catch (error) {
+      console.error('❌ Error loading credit transactions:', error)
+      set({ creditTransactions: [], creditLoading: false })
+    }
+  },
+
+  loadCreditHistory: async (days: number = 7, accessToken?: string) => {
+    if (!accessToken) {
+      console.log('⚠️ No access token provided for loading credit history')
+      return
+    }
+
+    set({ creditLoading: true })
+    
+    try {
+      const { apiKey } = get()
+      const response = await chatApi.getCreditHistory(days, accessToken, apiKey?.key)
+      
+      if (response.success && response.data) {
+        set({ creditHistory: response.data as CreditHistory, creditLoading: false })
+        console.log('✅ Credit history loaded successfully')
+      } else {
+        set({ creditHistory: null, creditLoading: false })
+        console.log('ℹ️ No credit history found')
+      }
+    } catch (error) {
+      console.error('❌ Error loading credit history:', error)
+      set({ creditHistory: null, creditLoading: false })
+    }
+  },
+
+  getCreditStatus: () => {
+    return get().creditStatus
+  },
+
+  getCreditTransactions: () => {
+    return get().creditTransactions
+  },
+
+  getCreditHistory: () => {
+    return get().creditHistory
   }
 })) 

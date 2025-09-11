@@ -18,19 +18,6 @@ const LoginButton: React.FC = () => {
   if (authenticated && user) {
     return (
       <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
-            <span className="text-white text-sm font-bold">
-              {user.email?.address?.charAt(0).toUpperCase() || user.wallet?.address?.slice(0, 2).toUpperCase() || 'U'}
-            </span>
-          </div>
-          <div className="hidden md:block">
-            <p className={`text-sm ${themeColors.text} font-medium`}>
-              {user.email?.address || `${user.wallet?.address?.slice(0, 6)}...${user.wallet?.address?.slice(-4)}`}
-            </p>
-            <p className={`text-xs ${themeColors.textTertiary}`}>Connected</p>
-          </div>
-        </div>
         <button
           onClick={logout}
           className={`${themeColors.buttonSecondary} hover:scale-105 transition p-2 rounded transition-colors font-medium`}
