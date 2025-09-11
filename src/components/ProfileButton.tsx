@@ -85,10 +85,10 @@ const ProfileButton: React.FC<ProfileButtonProps> = ({ className = '' }) => {
     
     switch (action) {
       case 'docs':
-        window.open('https://docs.sentient.ai', '_blank')
+        window.open('https://docs.dobby.monleru.fun', '_blank')
         break
       case 'api':
-        window.open('https://api.sentient.ai', '_blank')
+        window.open('https://docs.dobby.monleru.fun/api-reference/introduction', '_blank')
         break
       case 'profile':
         // Navigate to profile page
